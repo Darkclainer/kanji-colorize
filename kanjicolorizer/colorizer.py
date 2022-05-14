@@ -28,22 +28,12 @@
 import os
 import itertools
 import re
-from errno import ENOENT as FILE_NOT_FOUND
 import sys
 
 # Anki add-on compatibility
-try:
-    import colorsys
-except ModuleNotFoundError:
-    from . import colorsys  # Anki add-on
-try:
-    import argparse
-except ModuleNotFoundError:
-    from . import argparse  # Anki add-on
-try:
-    from xml.dom import minidom
-except ModuleNotFoundError:
-    from .xml.dom import minidom
+import colorsys
+import argparse
+from xml.dom import minidom
 
 # Function that I want to have after refactoring, currently implemented using
 # existing interface

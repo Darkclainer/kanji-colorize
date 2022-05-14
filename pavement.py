@@ -64,9 +64,6 @@ def clean_anki_addon(options):
 @needs('setuptools.command.build', 'clean_anki_addon')
 def build_anki_addon(options):
 
-    import argparse
-    import colorsys
-
     # somewhere to put things
     options.anki.builddir.makedirs()
 
@@ -77,10 +74,6 @@ def build_anki_addon(options):
     (path('anki') / 'config.json').copy(options.anki.builddir)
     lib_path = path('build') / 'lib' / 'kanjicolorizer'
     lib_path.copytree(options.anki.builddir / 'kanjicolorizer')
-
-    # add required modules
-    path(argparse.__file__).copy(options.anki.builddir / 'kanjicolorizer')
-    path(colorsys.__file__).copy(options.anki.builddir / 'kanjicolorizer')
 
     # add licenses
     license_dest = options.anki.builddir / 'kanjicolorizer' / 'licenses'
