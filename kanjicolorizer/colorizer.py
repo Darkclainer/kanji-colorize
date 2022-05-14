@@ -432,6 +432,8 @@ class KanjiColorizer:
         ...     print(line)
         ...
         """
+        if src_svg == '':
+            return ''
         dom = minidom.parseString(src_svg)
         _remove_empty_text(dom)
         svg: minidom.Document = dom.getElementsByTagName('svg')[0]
