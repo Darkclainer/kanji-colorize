@@ -26,6 +26,7 @@
 # Note: this module is in the middle of being refactored.
 
 import os
+import itertools
 import re
 from errno import ENOENT as FILE_NOT_FOUND
 import sys
@@ -39,6 +40,10 @@ try:
     import argparse
 except ModuleNotFoundError:
     from . import argparse  # Anki add-on
+try:
+    from xml.dom import minidom
+except ModuleNotFoundError:
+    from .xml.dom import minidom
 
 # Function that I want to have after refactoring, currently implemented using
 # existing interface
@@ -341,9 +346,9 @@ class KanjiColorizer:
         >>> svg.splitlines()[0]
         '<?xml version="1.0" encoding="UTF-8"?>'
         >>> svg.find('00061')
-        1780
+        1938
         >>> svg.find('has been modified')
-        54
+        53
 
         """
         svg = KanjiVG(character).svg
@@ -379,7 +384,7 @@ class KanjiColorizer:
 
         Clean up doctest
         >>> import shutil
-        >>> shutil.rmtree(test_output_dir)
+        >>> shutil.rmtree(test_output_dir) 
 
         """
         self._setup_dst_dir()
@@ -407,7 +412,7 @@ class KanjiColorizer:
             with open(dst_file_path, 'w', encoding='utf-8') as f:
                 f.write(svg)
 
-    def _modify_svg(self, svg):
+    def _modify_svg(self, src_svg):
         """
         Applies all desired changes to the SVG
 
@@ -427,17 +432,18 @@ class KanjiColorizer:
         ...     print(line)
         ...
         """
-        svg = self._color_svg(svg)
+        dom = minidom.parseString(src_svg)
+        _remove_empty_text(dom)
+        svg: minidom.Document = dom.getElementsByTagName('svg')[0]
 
         if self.settings.group_mode:
-            svg = self._remove_strokes(svg)
+            self._color_svg_groups(svg)
+        else:
+            self._color_svg_strokes(svg)
 
-        svg = self._resize_svg(svg)
-        svg = self._comment_copyright(svg)
-        return svg
-
-    def _remove_strokes(self, svg):
-        return re.sub("<text.*?</text>", "", svg)
+        self._resize_svg(dom, svg)
+        self._comment_copyright(dom)
+        return dom.toprettyxml(encoding='UTF-8', newl='\n').decode()
 
     # Private methods for working with files and directories
 
@@ -485,12 +491,24 @@ class KanjiColorizer:
         """
         if (self.settings.filename_mode == 'character'):
             return kanji.character_filename
-        else:
-            return kanji.ascii_filename
+        return kanji.ascii_filename
 
     # private methods for modifying svgs
+    def _color_svg_groups(self, svg: minidom.Document):
+        groups = _get_nonempty_elements(svg, 'kvg:element')
+        colors = self._color_generator(len(groups))
+        all_texts = svg.getElementsByTagName('text')
+        for group in groups:
+            color = next(colors)
+            paths = _get_direct_paths(group)
+            texts = all_texts[:len(paths)]
+            all_texts = all_texts[len(paths):]
+            for path, text in itertools.zip_longest(paths, texts):
+                path.attributes['style'] = 'stroke: %s;' % color
+                if text is not None:
+                    text.attributes['style'] = 'fill: %s;' % color
 
-    def _color_svg(self, svg):
+    def _color_svg_strokes(self, svg: minidom.Document):
         """
         Color the svg with colors from _color_generator, which uses
         configuration from settings
@@ -499,136 +517,122 @@ class KanjiColorizer:
         number) elements.  Both of these already have attributes, so we
         can expect a space.  Not all SVGs include stroke numbers.
 
-        >>> svg = "<svg><path /><path /><text >1</text><text >2</text></svg>"
         >>> kc = KanjiColorizer('')
-        >>> kc._color_svg(svg)
-        '<svg><path style="stroke: #bf0909;" /><path style="stroke: #09bfbf;" /><text style="fill: #bf0909;" >1</text><text style="fill: #09bfbf;" >2</text></svg>'
-        >>> svg = "<svg><path /><path /></svg>"
-        >>> kc._color_svg(svg)
-        '<svg><path style="stroke: #bf0909;" /><path style="stroke: #09bfbf;" /></svg>'
+        >>> svg_src = "<svg><path /><path /><text >1</text><text >2</text></svg>"
+        >>> dom = minidom.parseString(svg_src)
+        >>> svg = dom.getElementsByTagName('svg')[0]
+        >>> kc._color_svg_strokes(svg)
+        >>> svg.toxml()
+        '<svg><path style="stroke: #bf0909;"/><path style="stroke: #09bfbf;"/><text style="fill: #bf0909;">1</text><text style="fill: #09bfbf;">2</text></svg>'
+        >>> svg_src = "<svg><path /><path /></svg>"
+        >>> dom = minidom.parseString(svg_src)
+        >>> svg = dom.getElementsByTagName('svg')[0]
+        >>> kc._color_svg_strokes(svg)
+        >>> svg.toxml()
+        '<svg><path style="stroke: #bf0909;"/><path style="stroke: #09bfbf;"/></svg>'
         """
         color_iterator = self._color_generator(self._stroke_count(svg))
 
-        def path_match(match_object):
-            return (match_object.re.pattern + 'style="stroke: ' +
-                    next(color_iterator) + ';" ')
+        paths = svg.getElementsByTagName('path')
+        texts = svg.getElementsByTagName('text')
+        for color, path, text in itertools.zip_longest(color_iterator, paths,
+                                                       texts):
+            path.attributes['style'] = 'stroke: %s;' % color
+            if text is not None:
+                text.attributes['style'] = 'fill: %s;' % color
 
-        def text_match(match_object):
-            return (match_object.re.pattern + 'style="fill: ' +
-                    next(color_iterator) + ';" ')
-
-        if not self.settings.group_mode:
-            svg = re.sub('<path ', path_match, svg)
-            return re.sub('<text ', text_match, svg)
-        else:
-            found = False
-            depth = 0
-            iopen = 0
-            lines = svg.split('\n')
-
-            nsvg = ''
-            for line in lines:
-                if line.find('<g ') != -1 or line.find('</g>') != -1:
-                    if not found:
-                        if line.find("<g ") != -1 and line.find(
-                                'kvg:element') != -1:
-                            found = True
-                            #print "first element tag found"
-                    else:
-                        if line.find("</g>") != -1:
-                            if iopen != 0 and iopen == depth:
-                                iopen = 0
-                                #print 'color group closed'
-                            depth -= 1
-
-                        if line.find("<g ") != -1:
-                            depth += 1
-                            if iopen == 0 and line.find('kvg:element') != -1:
-                                iopen = depth
-                                line = re.sub('<g ', path_match, line)
-                                #print 'color group opened'
-
-                nsvg += line + "\n"
-            return nsvg
-
-    def _comment_copyright(self, svg):
+    def _comment_copyright(self, dom: minidom.Document):
         """
         Add a comment about what this script has done to the copyright notice
 
-        >>> svg = '''<!--
+        >>> svg_src = '''<!--
         ... Copyright (C) copyright holder (etc.)
         ... -->
-        ... <svg> <! content> </svg>
+        ... <svg></svg>
         ... '''
 
         This contains the notice:
 
         >>> kc = KanjiColorizer('')
-        >>> kc._comment_copyright(svg).count('This file has been modified')
+        >>> dom = minidom.parseString(svg_src)
+        >>> kc._comment_copyright(dom)
+        >>> dom.toxml().count('This file has been modified')
         1
 
         And depends on the settings it is run with:
 
         >>> kc = KanjiColorizer('--mode contrast')
-        >>> kc._comment_copyright(svg).count('contrast')
+        >>> dom = minidom.parseString(svg_src)
+        >>> kc._comment_copyright(dom)
+        >>> dom.toxml().count('contrast')
         1
         >>> kc = KanjiColorizer('--mode spectrum')
-        >>> kc._comment_copyright(svg).count('contrast')
+        >>> dom = minidom.parseString(svg_src)
+        >>> kc._comment_copyright(dom)
+        >>> dom.toxml().count('contrast')
         0
         """
-        note = """This file has been modified from the original version by the kanji_colorize.py
-script (available at http://github.com/cayennes/kanji-colorize) with these
+        note = f"""This file has been modified from the original version by the kanji_colorize.py
+script (available at http://github.com/Darkclainer/kanji-colorize,
+that is fork of https://github.com/cayennes/kanji-colorize) with these
 settings:
-    mode: """ + self.settings.mode + """
-    saturation: """ + str(self.settings.saturation) + """
-    value: """ + str(self.settings.value) + """
-    image_size: """ + str(self.settings.image_size) + """
+    mode: {self.settings.mode}
+    saturation: {str(self.settings.saturation)}
+    value: {str(self.settings.value)}
+    image_size: {str(self.settings.image_size)}
 It remains under a Creative Commons-Attribution-Share Alike 3.0 License.
 
 The original SVG has the following copyright:
 
 """
-        place_before = "Copyright (C)"
-        return svg.replace(place_before, note + place_before)
+        comment = next(
+            filter(lambda v: v.nodeType == minidom.Document.COMMENT_NODE,
+                   dom.childNodes))
+        comment.data = note + comment.data
 
-    def _resize_svg(self, svg):
+    def _resize_svg(self, dom: minidom.Document, svg: minidom.Element):
         """
         Resize the svg according to args.image_size, by changing the 109s
         in the <svg> attributes, and adding a transform scale to the
         groups enclosing the strokes and stroke numbers
 
-        >>> svg = '<svg  width="109" height="109" viewBox="0 0 109 109"><!109><g id="kvg:StrokePaths_"><path /></g></svg>'
         >>> kc = KanjiColorizer('--image-size 100')
-        >>> kc._resize_svg(svg)
-        '<svg  width="100" height = "100" viewBox="0 0 100 100"><!109><g id="kvg:StrokePaths_" transform="scale(0.9174311926605505,0.9174311926605505)"><path /></g></svg>'
-        >>> svg = '<svg  width="109" height="109" viewBox="0 0 109 109"><!109><g id="kvg:StrokePaths_"><path /></g><g id="kvg:StrokeNumbers_"><text /></g></svg>'
-        >>> kc = KanjiColorizer('--image-size 327')
-        >>> kc._resize_svg(svg)
-        '<svg  width="327" height = "327" viewBox="0 0 327 327"><!109><g id="kvg:StrokePaths_" transform="scale(3.0,3.0)"><path /></g><g id="kvg:StrokeNumbers_" transform="scale(3.0,3.0)"><text /></g></svg>'
+        >>> svg_src = '<svg  width="109" height="109" viewBox="0 0 109 109"><g id="a"><path /></g></svg>'
+        >>> svg = minidom.parseString(svg_src)
+        >>> kc._resize_svg(svg, svg.documentElement)
+        >>> svg.documentElement.toxml()
+        '<svg width="100" height="100" viewBox="0 0 100 100"><g id="scaleTransform" transform="scale(0.9174311926605505,0.9174311926605505)"><g id="a"><path/></g></g></svg>'
         """
         ratio = repr(float(self.settings.image_size) / 109)
-        svg = svg.replace(
-            '109" height="109" viewBox="0 0 109 109',
-            '{0}" height = "{0}" viewBox="0 0 {0} {0}'.format(
-                str(self.settings.image_size)))
-        svg = re.sub('(<g id="kvg:Stroke.*?)(>)',
-                     r'\1 transform="scale(' + ratio + ',' + ratio + r')"\2',
-                     svg)
-        return svg
+        size = str(self.settings.image_size)
+        svg.attributes['width'].value = size
+        svg.attributes['height'].value = size
+        svg.attributes['viewBox'].value = "0 0 %s %s" % (size, size)
+
+        scale_g: minidom.Element = dom.createElement('g')
+        scale_g.attributes['id'] = 'scaleTransform'
+        scale_g.attributes['transform'] = 'scale(%s,%s)' % (ratio, ratio)
+
+        childs = list(svg.childNodes)
+        for child in childs:
+            scale_g.appendChild(child)
+
+        svg.appendChild(scale_g)
 
     # Private utility methods
 
-    def _stroke_count(self, svg):
+    def _stroke_count(self, svg: minidom.Document) -> int:
         """
         Return the number of strokes in the svg, based on occurences of
         "<path "
 
-        >>> svg = "<svg><path /><path /><path /></svg>"
+        >>> dom = minidom.parseString("<svg><path /><path /><path /></svg>")
+        >>> svg = dom.getElementsByTagName('svg')[0]
         >>> kc = KanjiColorizer('')
         >>> kc._stroke_count(svg)
         3
         """
-        return len(re.findall('<path ', svg))
+        return len(svg.getElementsByTagName('path'))
 
     def _hsv_to_rgbhexcode(self, h, s, v):
         """
@@ -654,23 +658,78 @@ The original SVG has the following copyright:
         >>> my_args = '--mode contrast --saturation 1 --value 1'
         >>> kc = KanjiColorizer(my_args)
         >>> [color for color in kc._color_generator(3)]
-        ['#ff0000', '#004aff', '#94ff00', '#ff0000', '#004aff', '#94ff00']
+        ['#ff0000', '#004aff', '#94ff00']
         >>> my_args = '--mode spectrum --saturation 0.95 --value 0.75'
         >>> kc = KanjiColorizer(my_args)
         >>> [color for color in kc._color_generator(2)]
-        ['#bf0909', '#09bfbf', '#bf0909', '#09bfbf']
+        ['#bf0909', '#09bfbf']
         """
         if (self.settings.mode == "contrast"):
             angle = 0.618033988749895  # conjugate of the golden ratio
-            for i in 2 * list(range(n)):
+            for i in range(n):
                 yield self._hsv_to_rgbhexcode(i * angle,
                                               self.settings.saturation,
                                               self.settings.value)
         else:  # spectrum is default
-            for i in 2 * list(range(n)):
+            for i in range(n):
                 yield self._hsv_to_rgbhexcode(
                     float(i) / n, self.settings.saturation,
                     self.settings.value)
+
+
+def _get_nonempty_elements(svg: minidom.Document, attribute: str):
+    """
+    Return all non empty groups that have element attribute.
+    Non empty means that they have at least one direct path child.
+
+    >>> node = minidom.parseString("<svg><g><path /><path /></g></svg>").documentElement
+    >>> _get_nonempty_elements(node, 'e')
+    []
+    >>> node = minidom.parseString("<svg><g e='a'><path/></g></svg>").documentElement
+    >>> list(map(lambda v: v.attributes['e'].value, _get_nonempty_elements(node, 'e')))
+    ['a']
+    >>> node = minidom.parseString("<svg><g e='a'></g></svg>").documentElement
+    >>> list(map(lambda v: v.attributes['e'].value, _get_nonempty_elements(node, 'e')))
+    []
+    >>> node = minidom.parseString("<svg><g e='a'><g e='b'><path/></g></g></svg>").documentElement
+    >>> list(map(lambda v: v.attributes['e'].value, _get_nonempty_elements(node, 'e')))
+    ['b']
+    """
+    return list(
+        filter(
+            lambda v: v.hasAttribute(attribute) and _has_direct_path(v),
+            svg.getElementsByTagName('g'),
+        ))
+
+
+def _has_direct_path(node: minidom.Document):
+    """
+    Return True if element has direct path child
+
+    >>> node = minidom.parseString("<g><path /><path /></g>").documentElement
+    >>> _has_direct_path(node)
+    True
+    >>> node = minidom.parseString("<g><text></text></g>").documentElement
+    >>> _has_direct_path(node)
+    False
+    """
+    return len(_get_direct_paths(node)) != 0
+
+
+def _get_direct_paths(node: minidom.Document):
+    """
+    Return direct paths child
+    """
+    return list(filter(lambda v: v.nodeName == 'path', node.childNodes))
+
+
+def _remove_empty_text(dom: minidom.Document):
+    childs = list(dom.childNodes)
+    for ch in childs:
+        if ch.nodeType == minidom.Document.TEXT_NODE and ch.data.isspace():
+            dom.removeChild(ch)
+        elif ch.nodeType == minidom.Document.ELEMENT_NODE:
+            _remove_empty_text(ch)
 
 
 # Exceptions
