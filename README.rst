@@ -1,5 +1,16 @@
-.. image:: https://circleci.com/gh/cayennes/kanji-colorize.svg?style=svg
-    :target: https://circleci.com/gh/cayennes/kanji-colorize
+About this fork
+---------------
+
+This is the fork of https://github.com/cayennes/kanji-colorize.
+I made because it seems that original project was abandoned (or
+at least it wasn't updated for a few years).
+
+For now next things were changed:
+
+1. KanjiVG submodule was updated (this includes all kanji diagrams)
+2. Fixed group mode coloring. At least how I understood it
+3. Modification process was rewritten to work with dom.
+   I hope it will help to modify this project.
 
 ==============
 KanjiColorizer
