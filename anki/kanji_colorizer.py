@@ -58,6 +58,13 @@ config += " --value "
 config += str(addon_config["value"])
 config += " --image-size "
 config += str(addon_config["image-size"])
+if addon_config["enable-grid"]:
+    config += " --enable-grid "
+config += " --grid-color "
+config += str(addon_config["grid-color"])
+config += " --grid-offset "
+config += str(addon_config["grid-offset"])
+print(config)
 
 modelNameSubstring = 'japanese'
 srcField = 'Kanji'

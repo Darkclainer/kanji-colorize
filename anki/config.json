@@ -7,4 +7,7 @@
  "src-field":"Kanji",
  "dst-field":"Diagram",
  "diagrammed-characters":"auto",
- "overwrite-dest": true}
+ "overwrite-dest": true,
+ "enable-grid": false,
+ "grid-color": "#c4c4c4",
+ "grid-offset": 1}

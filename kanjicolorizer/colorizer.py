@@ -298,6 +298,9 @@ class KanjiColorizer:
         self._parser.add_argument('-o',
                                   '--output-directory',
                                   default='colorized-kanji')
+        self._parser.add_argument('--grid-color', default='#c4c4c4', type=str)
+        self._parser.add_argument('--grid-offset', default=1, type=int)
+        self._parser.add_argument('--enable-grid', action="store_true")
 
     # Public methods
 
@@ -426,18 +429,79 @@ class KanjiColorizer:
             return ''
         dom = minidom.parseString(src_svg)
         _remove_empty_text(dom)
-        svg: minidom.Document = dom.getElementsByTagName('svg')[0]
+        svg: minidom.Element = dom.getElementsByTagName('svg')[0]
 
         if self.settings.group_mode:
             self._color_svg_groups(svg)
         else:
             self._color_svg_strokes(svg)
 
+        if self.settings.enable_grid:
+            self._add_grid(dom, svg)
+
         self._resize_svg(dom, svg)
         self._comment_copyright(dom)
         return dom.toprettyxml(encoding='UTF-8', newl='\n').decode()
 
     # Private methods for working with files and directories
+
+    def _add_grid(self, dom: minidom.Document, svg: minidom.Element):
+        line_start = self.settings.grid_offset
+        line_stop = 109 - line_start
+        rect_size = 109 - line_start * 2
+
+        grid_group: minidom.Element = dom.createElement("g")
+        grid_group.setAttribute('id', 'Grid')
+
+        vert_line: minidom.Element = dom.createElement('line')
+        _set_element_attrs(
+            vert_line, {
+                'x1':
+                55,
+                'y1':
+                line_start,
+                'x2':
+                55,
+                'y2':
+                line_stop,
+                'style':
+                f'stroke:{self.settings.grid_color};stroke-width:0.5;stroke-dasharray:5,5;',
+            })
+        grid_group.appendChild(vert_line)
+
+        horiz_line: minidom.Element = dom.createElement('line')
+        _set_element_attrs(
+            horiz_line, {
+                'x1':
+                line_start,
+                'y1':
+                55,
+                'x2':
+                line_stop,
+                'y2':
+                55,
+                'style':
+                f'stroke:{self.settings.grid_color};stroke-width:0.5;stroke-dasharray:5,5;',
+            })
+        grid_group.appendChild(horiz_line)
+
+        rect: minidom.Element = dom.createElement('rect')
+        _set_element_attrs(
+            rect, {
+                'x':
+                line_start,
+                'y':
+                line_start,
+                'width':
+                rect_size,
+                'height':
+                rect_size,
+                'style':
+                f'fill:transparent;stroke:{self.settings.grid_color};stroke-width:0.5;',
+            })
+        grid_group.appendChild(rect)
+
+        svg.insertBefore(grid_group, svg.firstChild)
 
     def _setup_dst_dir(self):
         """
@@ -486,7 +550,7 @@ class KanjiColorizer:
         return kanji.ascii_filename
 
     # private methods for modifying svgs
-    def _color_svg_groups(self, svg: minidom.Document):
+    def _color_svg_groups(self, svg: minidom.Element):
         groups = _get_nonempty_elements(svg, 'kvg:element')
         colors = self._color_generator(len(groups))
         all_texts = svg.getElementsByTagName('text')
@@ -500,7 +564,7 @@ class KanjiColorizer:
                 if text is not None:
                     text.attributes['style'] = 'fill: %s;' % color
 
-    def _color_svg_strokes(self, svg: minidom.Document):
+    def _color_svg_strokes(self, svg: minidom.Element):
         """
         Color the svg with colors from _color_generator, which uses
         configuration from settings
@@ -613,7 +677,7 @@ The original SVG has the following copyright:
 
     # Private utility methods
 
-    def _stroke_count(self, svg: minidom.Document) -> int:
+    def _stroke_count(self, svg: minidom.Element) -> int:
         """
         Return the number of strokes in the svg, based on occurences of
         "<path "
@@ -669,7 +733,7 @@ The original SVG has the following copyright:
                     self.settings.value)
 
 
-def _get_nonempty_elements(svg: minidom.Document, attribute: str):
+def _get_nonempty_elements(svg: minidom.Element, attribute: str):
     """
     Return all non empty groups that have element attribute.
     Non empty means that they have at least one direct path child.
@@ -722,6 +786,11 @@ def _remove_empty_text(dom: minidom.Document):
             dom.removeChild(ch)
         elif ch.nodeType == minidom.Document.ELEMENT_NODE:
             _remove_empty_text(ch)
+
+
+def _set_element_attrs(element: minidom.Element, attrs):
+    for key, value in attrs.items():
+        element.setAttribute(key, str(value))
 
 
 # Exceptions
