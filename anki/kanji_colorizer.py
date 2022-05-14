@@ -37,13 +37,12 @@
 # settings, use the "Kanji Colorizer: (re)generate all" option in the
 # tools menu.
 
-
 from anki.hooks import addHook
 from aqt import mw
 from aqt.utils import showInfo, askUser
 from aqt.qt import *
 from .kanjicolorizer.colorizer import (KanjiVG, KanjiColorizer,
-                                      InvalidCharacterError)
+                                       InvalidCharacterError)
 
 # Configuration
 
@@ -52,7 +51,7 @@ addon_config = mw.addonManager.getConfig(__name__)
 config = "--mode "
 config += addon_config["mode"]
 if addon_config["group-mode"]:
-  config += " --group-mode "
+    config += " --group-mode "
 config += " --saturation "
 config += str(addon_config["saturation"])
 config += " --value "
@@ -61,9 +60,9 @@ config += " --image-size "
 config += str(addon_config["image-size"])
 
 modelNameSubstring = 'japanese'
-srcField           = 'Kanji'
-dstField           = 'Diagram'
-overwrite          = True
+srcField = 'Kanji'
+dstField = 'Diagram'
+overwrite = True
 
 # avoid errors due to invalid config
 if 'model' in addon_config and type(addon_config['model']) is str:
@@ -72,7 +71,8 @@ if 'src-field' in addon_config and type(addon_config['src-field']) is str:
     srcField = addon_config['src-field']
 if 'dst-field' in addon_config and type(addon_config['dst-field']) is str:
     dstField = addon_config['dst-field']
-if 'overwrite-dest' in addon_config and type(addon_config['overwrite-dest']) is bool:
+if 'overwrite-dest' in addon_config and type(
+        addon_config['overwrite-dest']) is bool:
     overwrite = addon_config['overwrite-dest']
 
 kc = KanjiColorizer(config)
@@ -86,9 +86,9 @@ def modelIsCorrectType(model):
     # Does the model name have Japanese in it?
     model_name = model['name'].lower()
     fields = mw.col.models.fieldNames(model)
-    return (modelNameSubstring in model_name and
-                         srcField in fields and
-                         dstField in fields)
+    return (modelNameSubstring in model_name and srcField in fields
+            and dstField in fields)
+
 
 def is_kanji(c):
     '''
@@ -123,7 +123,7 @@ def addKanji(note, flag=False, currentFieldIndex=None):
     if not modelIsCorrectType(note.model()):
         return flag
 
-    if currentFieldIndex != None: # We've left a field
+    if currentFieldIndex != None:  # We've left a field
         # But it isn't the relevant one
         if note.model()['flds'][currentFieldIndex]['name'] != srcField:
             return flag
@@ -131,7 +131,7 @@ def addKanji(note, flag=False, currentFieldIndex=None):
     srcTxt = mw.col.media.strip(note[srcField])
 
     oldDst = note[dstField]
-    dst=''
+    dst = ''
 
     for character in characters_to_colorize(str(srcTxt)):
         # write to file; anki works in the media directory by default
@@ -159,13 +159,15 @@ def addKanji(note, flag=False, currentFieldIndex=None):
 
 # Add a colorized kanji to a Diagram whenever leaving a Kanji field
 
+
 def onFocusLost(flag, note, currentFieldIndex):
     return addKanji(note, flag, currentFieldIndex)
 
+
 addHook('editFocusLost', onFocusLost)
 
-
 # menu item to regenerate all
+
 
 def regenerate_all():
     # Find the models that have the right name and fields; faster than
@@ -181,23 +183,31 @@ def regenerate_all():
             addKanji(mw.col.getNote(nid))
     showInfo("Done regenerating colorized kanji diagrams!")
 
+
 def generate_for_new():
     if not askUser("This option will generate diagrams for notes with "
                    "an empty {} field only. "
                    "Proceed?".format(dstField)):
         return
-    model_ids = [mid for mid in mw.col.models.ids() if modelIsCorrectType(mw.col.models.get(mid))]
+    model_ids = [
+        mid for mid in mw.col.models.ids()
+        if modelIsCorrectType(mw.col.models.get(mid))
+    ]
     if not model_ids:
-        showInfo("Can not find any relevant models. Make sure model, src-field,-and dst-field are set correctly in your config.")
+        showInfo(
+            "Can not find any relevant models. Make sure model, src-field,-and dst-field are set correctly in your config."
+        )
         return
-    # Generate search string in the format 
+    # Generate search string in the format
     #    (mid:123 or mid:456) Kanji:_* Diagram:
     search_str = '({}) {}:_* {}:'.format(
-        ' or '.join(('mid:'+str(mid) for mid in model_ids)), srcField, dstField)
+        ' or '.join(('mid:' + str(mid) for mid in model_ids)), srcField,
+        dstField)
     # Find the notes
     for note_id in mw.col.findNotes(search_str):
         addKanji(mw.col.getNote(note_id))
     showInfo("Done generating colorized kanji diagrams!")
+
 
 # add menu items
 submenu = mw.form.menuTools.addMenu("Kanji Colorizer")

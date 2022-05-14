@@ -24,36 +24,28 @@ from paver.easy import *
 from paver.setuputils import setup
 import zipfile
 
+options(anki=Bunch(builddir=path('build') / 'anki_addon',
+                   zip=path('dist') / 'KanjiColorizerAnkiAddon.zip'))
 
-options(
-    anki=Bunch(
-        builddir=path('build') / 'anki_addon',
-        zip=path('dist') / 'KanjiColorizerAnkiAddon.zip'))
-
-
-setup(
-    name='KanjiColorizer',
-    description='script and module to create colored stroke order '
-        'diagrams based on KanjiVG data',
-    long_description=open('README.rst').read(),
-    version='0.12',
-    author='Cayenne',
-    author_email='cayennes@gmail.com',
-    url='http://github.com/cayennes/kanji-colorize',
-    packages=['kanjicolorizer'],
-    scripts=['kanji_colorize.py'],
-    package_data={'kanjicolorizer': ['data/kanjivg/kanji/*.svg']},
-    classifiers=[
-        'Development Status :: 3 - Alpha',
-        'Environment :: Console',
-        'Intended Audience :: End Users/Desktop',
-        'License :: OSI Approved :: GNU Affero General Public License '
-            'v3 or later (AGPLv3+)',
-        'Programming Language :: Python',
-        'Natural Language :: English',
-        'Operating System :: OS Independent',
-        'Topic :: Education',
-        'Topic :: Multimedia :: Graphics' ])
+setup(name='KanjiColorizer',
+      description='script and module to create colored stroke order '
+      'diagrams based on KanjiVG data',
+      long_description=open('README.rst').read(),
+      version='0.12',
+      author='Cayenne',
+      author_email='cayennes@gmail.com',
+      url='http://github.com/cayennes/kanji-colorize',
+      packages=['kanjicolorizer'],
+      scripts=['kanji_colorize.py'],
+      package_data={'kanjicolorizer': ['data/kanjivg/kanji/*.svg']},
+      classifiers=[
+          'Development Status :: 3 - Alpha', 'Environment :: Console',
+          'Intended Audience :: End Users/Desktop',
+          'License :: OSI Approved :: GNU Affero General Public License '
+          'v3 or later (AGPLv3+)', 'Programming Language :: Python',
+          'Natural Language :: English', 'Operating System :: OS Independent',
+          'Topic :: Education', 'Topic :: Multimedia :: Graphics'
+      ])
 
 
 @task

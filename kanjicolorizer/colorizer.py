@@ -40,11 +40,14 @@ try:
 except ModuleNotFoundError:
     from . import argparse  # Anki add-on
 
-
 # Function that I want to have after refactoring, currently implemented using
 # existing interface
 
-def colorize(character, mode="spectrum", saturation=0.95, value=0.75,
+
+def colorize(character,
+             mode="spectrum",
+             saturation=0.95,
+             value=0.75,
              image_size=327):
     """
     Returns a string containing the colorized svg for the character
@@ -64,17 +67,18 @@ def colorize(character, mode="spectrum", saturation=0.95, value=0.75,
 
 # Setup
 
-source_directory = os.path.join(os.path.dirname(__file__),
-                                'data', 'kanjivg', 'kanji')
-
+source_directory = os.path.join(os.path.dirname(__file__), 'data', 'kanjivg',
+                                'kanji')
 
 # Classes
+
 
 class KanjiVG(object):
     '''
     Class to create kanji objects containing KanjiVG data and some more
     basic qualities of the character
     '''
+
     def __init__(self, character, variant=''):
         '''
         Create a new KanjiVG object
@@ -102,7 +106,7 @@ class KanjiVG(object):
         >>> k = KanjiVG('Л')
         Traceback (most recent call last):
             ...
-        kanjicolorizer.colorizer.InvalidCharacterError: ('\\u041b', '')
+        InvalidCharacterError: ('Л', '')
 
         '''
         self.character = character
@@ -111,13 +115,11 @@ class KanjiVG(object):
             self.variant = ''
         try:
             with open(os.path.join(source_directory, self.ascii_filename),
-                      'r', encoding='utf-8') as f:
+                      'r',
+                      encoding='utf-8') as f:
                 self.svg = f.read()
-        except IOError as e:  # file not found
-            if e.errno == FILE_NOT_FOUND:
-                raise InvalidCharacterError(character, variant) from e
-            else:
-                raise
+        except FileNotFoundError as e:  # file not found
+            raise InvalidCharacterError(character, variant) from e
 
     @classmethod
     def _create_from_filename(cls, filename):
@@ -241,48 +243,66 @@ class KanjiColorizer:
 
         """
         self._parser = argparse.ArgumentParser(description='Create a set of '
-                                             'colored stroke order svgs')
-        self._parser.add_argument('--mode', default='spectrum',
-                    choices=['spectrum', 'contrast'],
-                    help='spectrum: color progresses evenly through the'
-                        ' spectrum; nice for seeing the way the kanji is'
-                        ' put together at a glance, but has the disadvantage'
-                        ' of using similar colors for consecutive strokes '
-                        'which can make it less clear which number goes '
-                        'with which stroke.  contrast: maximizes contrast '
-                        'among any group of consecutive strokes, using the '
-                        'golden ratio; also provides consistency by using '
-                        'the same sequence for every kanji.  (default: '
-                        '%(default)s)')
-        self._parser.add_argument('--saturation', default=0.95, type=float,
-                    help='a decimal indicating saturation where 0 is '
-                        'white/gray/black and 1 is completely  colorful '
-                        '(default: %(default)s)')
-        self._parser.add_argument('--group-mode', action='store_true',
-                    help='Color kanji groups instead of stroke by stroke '
-                        '(default: %(default)s)')
-        self._parser.add_argument('--value', default=0.75, type=float,
-                    help='a decimal indicating value where 0 is black '
-                        'and 1 is colored or white '
-                        '(default: %(default)s)')
-        self._parser.add_argument('--image-size', default=327, type=int,
-                    help="image size in pixels; they're square so this "
-                        'will be both height and width '
-                        '(default: %(default)s)')
-        self._parser.add_argument('--characters', type=str,
-                    help='a list of characters to include, without '
-                         'spaces; if this option is used, no variants '
-                         'will be included; if this option is not '
-                         'used, all characters will be included, '
-                         'including variants')
-        self._parser.add_argument('--filename-mode', default='character',
-                    choices=['character', 'code'],
-                    help='character: rename the files to use the '
-                        'unicode character as a filename.  code: leave it '
-                        'as the code.  '
-                        '(default: %(default)s)')
-        self._parser.add_argument('-o', '--output-directory',
-                    default='colorized-kanji')
+                                               'colored stroke order svgs')
+        self._parser.add_argument(
+            '--mode',
+            default='spectrum',
+            choices=['spectrum', 'contrast'],
+            help='spectrum: color progresses evenly through the'
+            ' spectrum; nice for seeing the way the kanji is'
+            ' put together at a glance, but has the disadvantage'
+            ' of using similar colors for consecutive strokes '
+            'which can make it less clear which number goes '
+            'with which stroke.  contrast: maximizes contrast '
+            'among any group of consecutive strokes, using the '
+            'golden ratio; also provides consistency by using '
+            'the same sequence for every kanji.  (default: '
+            '%(default)s)')
+        self._parser.add_argument(
+            '--saturation',
+            default=0.95,
+            type=float,
+            help='a decimal indicating saturation where 0 is '
+            'white/gray/black and 1 is completely  colorful '
+            '(default: %(default)s)')
+        self._parser.add_argument(
+            '--group-mode',
+            action='store_true',
+            help='Color kanji groups instead of stroke by stroke '
+            '(default: %(default)s)')
+        self._parser.add_argument(
+            '--value',
+            default=0.75,
+            type=float,
+            help='a decimal indicating value where 0 is black '
+            'and 1 is colored or white '
+            '(default: %(default)s)')
+        self._parser.add_argument(
+            '--image-size',
+            default=327,
+            type=int,
+            help="image size in pixels; they're square so this "
+            'will be both height and width '
+            '(default: %(default)s)')
+        self._parser.add_argument(
+            '--characters',
+            type=str,
+            help='a list of characters to include, without '
+            'spaces; if this option is used, no variants '
+            'will be included; if this option is not '
+            'used, all characters will be included, '
+            'including variants')
+        self._parser.add_argument(
+            '--filename-mode',
+            default='character',
+            choices=['character', 'code'],
+            help='character: rename the files to use the '
+            'unicode character as a filename.  code: leave it '
+            'as the code.  '
+            '(default: %(default)s)')
+        self._parser.add_argument('-o',
+                                  '--output-directory',
+                                  default='colorized-kanji')
 
     # Public methods
 
@@ -383,7 +403,7 @@ class KanjiColorizer:
         for kanji in characters:
             svg = self._modify_svg(kanji.svg)
             dst_file_path = os.path.join(self.settings.output_directory,
-                self._get_dst_filename(kanji))
+                                         self._get_dst_filename(kanji))
             with open(dst_file_path, 'w', encoding='utf-8') as f:
                 f.write(svg)
 
@@ -490,16 +510,12 @@ class KanjiColorizer:
         color_iterator = self._color_generator(self._stroke_count(svg))
 
         def path_match(match_object):
-            return (
-                match_object.re.pattern +
-                'style="stroke: ' +
-                next(color_iterator) + ';" ')
+            return (match_object.re.pattern + 'style="stroke: ' +
+                    next(color_iterator) + ';" ')
 
         def text_match(match_object):
-            return (
-                match_object.re.pattern +
-                'style="fill: ' +
-                next(color_iterator) + ';" ')
+            return (match_object.re.pattern + 'style="fill: ' +
+                    next(color_iterator) + ';" ')
 
         if not self.settings.group_mode:
             svg = re.sub('<path ', path_match, svg)
@@ -510,11 +526,12 @@ class KanjiColorizer:
             iopen = 0
             lines = svg.split('\n')
 
-            nsvg=''
+            nsvg = ''
             for line in lines:
                 if line.find('<g ') != -1 or line.find('</g>') != -1:
                     if not found:
-                        if line.find("<g ") != -1 and line.find('kvg:element') != -1:
+                        if line.find("<g ") != -1 and line.find(
+                                'kvg:element') != -1:
                             found = True
                             #print "first element tag found"
                     else:
@@ -522,16 +539,16 @@ class KanjiColorizer:
                             if iopen != 0 and iopen == depth:
                                 iopen = 0
                                 #print 'color group closed'
-                            depth-=1
+                            depth -= 1
 
                         if line.find("<g ") != -1:
-                            depth+=1
+                            depth += 1
                             if iopen == 0 and line.find('kvg:element') != -1:
                                 iopen = depth
                                 line = re.sub('<g ', path_match, line)
                                 #print 'color group opened'
 
-                nsvg+=line+"\n"
+                nsvg += line + "\n"
             return nsvg
 
     def _comment_copyright(self, svg):
@@ -594,10 +611,9 @@ The original SVG has the following copyright:
             '109" height="109" viewBox="0 0 109 109',
             '{0}" height = "{0}" viewBox="0 0 {0} {0}'.format(
                 str(self.settings.image_size)))
-        svg = re.sub(
-            '(<g id="kvg:Stroke.*?)(>)',
-            r'\1 transform="scale(' + ratio + ',' + ratio + r')"\2',
-            svg)
+        svg = re.sub('(<g id="kvg:Stroke.*?)(>)',
+                     r'\1 transform="scale(' + ratio + ',' + ratio + r')"\2',
+                     svg)
         return svg
 
     # Private utility methods
@@ -648,14 +664,17 @@ The original SVG has the following copyright:
             angle = 0.618033988749895  # conjugate of the golden ratio
             for i in 2 * list(range(n)):
                 yield self._hsv_to_rgbhexcode(i * angle,
-                    self.settings.saturation, self.settings.value)
+                                              self.settings.saturation,
+                                              self.settings.value)
         else:  # spectrum is default
             for i in 2 * list(range(n)):
-                yield self._hsv_to_rgbhexcode(float(i) / n,
-                    self.settings.saturation, self.settings.value)
+                yield self._hsv_to_rgbhexcode(
+                    float(i) / n, self.settings.saturation,
+                    self.settings.value)
 
 
 # Exceptions
+
 
 class Error(Exception):
     '''

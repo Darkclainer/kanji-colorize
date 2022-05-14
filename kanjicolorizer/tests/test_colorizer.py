@@ -26,7 +26,7 @@ import os
 from kanjicolorizer import colorizer
 from kanjicolorizer.colorizer import KanjiVG, KanjiColorizer
 
-TOTAL_NUMBER_CHARACTERS = 11458
+TOTAL_NUMBER_CHARACTERS = 11724
 
 
 class KanjiVGInitTest(unittest.TestCase):
@@ -81,10 +81,7 @@ class KanjiVGInitTest(unittest.TestCase):
         self.assertIn(repr('Л'), repr(cm.exception))
 
     def test_with_multiple_characters_raises_correct_exception(self):
-        self.assertRaises(
-            colorizer.InvalidCharacterError,
-            KanjiVG,
-            ('漢字'))
+        self.assertRaises(colorizer.InvalidCharacterError, KanjiVG, ('漢字'))
 
     def test_with_nonexistent_variant_raises_correct_ex_args(self):
         with self.assertRaises(colorizer.InvalidCharacterError) as cm:
@@ -97,22 +94,14 @@ class KanjiVGInitTest(unittest.TestCase):
         self.assertIn(repr('gobbledygook'), repr(cm.exception))
 
     def test_with_mismatched_variant_raises_correct_exception(self):
-        self.assertRaises(
-            colorizer.InvalidCharacterError,
-            KanjiVG,
-            ('漢', 'Kaisho'))
+        self.assertRaises(colorizer.InvalidCharacterError, KanjiVG,
+                          ('漢', 'Kaisho'))
 
     def test_empty_variant_raises_correct_exception(self):
-        self.assertRaises(
-            colorizer.InvalidCharacterError,
-            KanjiVG,
-            ('字', ''))
+        self.assertRaises(colorizer.InvalidCharacterError, KanjiVG, ('字', ''))
 
     def test_with_too_few_parameters_raises_correct_exception(self):
-        self.assertRaises(
-            colorizer.InvalidCharacterError,
-            KanjiVG,
-            ())
+        self.assertRaises(colorizer.InvalidCharacterError, KanjiVG, ())
 
     def test_permission_denied_error_propogated(self):
         '''
@@ -121,10 +110,7 @@ class KanjiVGInitTest(unittest.TestCase):
         '''
         with patch('builtins.open') as mock_open:
             mock_open.side_effect = IOError(31, 'Permission denied')
-            self.assertRaises(
-                IOError,
-                KanjiVG,
-                ('a'))
+            self.assertRaises(IOError, KanjiVG, ('a'))
 
 
 class KanjiVGCreateFromFilenameTest(unittest.TestCase):
@@ -147,19 +133,14 @@ class KanjiVGCreateFromFilenameTest(unittest.TestCase):
         '''
         As a private method, the precise exception is unimportant
         '''
-        self.assertRaises(
-            Exception,
-            KanjiVG._create_from_filename,
-            '10000.svg')
+        self.assertRaises(Exception, KanjiVG._create_from_filename,
+                          '10000.svg')
 
     def test_incorrect_format_raises_exception(self):
         '''
         As a private method, the precise exception is unimportant
         '''
-        self.assertRaises(
-            Exception,
-            KanjiVG._create_from_filename,
-            '5b57')
+        self.assertRaises(Exception, KanjiVG._create_from_filename, '5b57')
 
 
 class KanjiVGAsciiFilenameTest(unittest.TestCase):
@@ -217,8 +198,8 @@ class KanjiColorizerCharactersOptionTest(unittest.TestCase):
         '''
         calls = self.mock_open.call_args_list
         files_opened_for_writing = [
-            os.path.split(c[0][0])[1]
-            for c in calls if ('w' in c[0][1])]
+            os.path.split(c[0][0])[1] for c in calls if ('w' in c[0][1])
+        ]
         self.assertIn(file_name, files_opened_for_writing)
 
     def assertDidntOpenFileForWriting(self, file_name):
@@ -230,8 +211,8 @@ class KanjiColorizerCharactersOptionTest(unittest.TestCase):
         '''
         calls = self.mock_open.call_args_list
         files_opened_for_writing = [
-            os.path.split(c[0][0])[1]
-            for c in calls if ('w' in c[0][1])]
+            os.path.split(c[0][0])[1] for c in calls if ('w' in c[0][1])
+        ]
         self.assertNotIn(file_name, files_opened_for_writing)
 
     def assertNumberFilesOpenedForWriting(self, number):
