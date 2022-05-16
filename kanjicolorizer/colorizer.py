@@ -28,7 +28,6 @@
 import os
 import itertools
 import re
-import sys
 
 # Anki add-on compatibility
 import colorsys
@@ -46,12 +45,6 @@ def colorize(character,
              image_size=327):
     """
     Returns a string containing the colorized svg for the character
-
-    >>> svg = colorize('a', mode='spectrum', image_size=100,
-    ...                saturation=0.95, value=0.75)
-    >>> 'has been modified' in svg
-    True
-
     """
     arg_fmt = '--mode {} --saturation {} --value {} --image-size {}'
     arg_string = arg_fmt.format(mode, saturation, value, image_size)
@@ -78,31 +71,11 @@ class KanjiVG(object):
         '''
         Create a new KanjiVG object
 
-        Either give just the character
-
-        >>> k1 = KanjiVG('漢')
-        >>> print(k1.character)
-        漢
-        >>> k1.variant
-        ''
-
-        Or if the character has a variant, give that as a second
-        argument
-
-        >>> k2 = KanjiVG('字', 'Kaisho')
-        >>> print(k2.character)
-        字
-        >>> k2.variant
-        'Kaisho'
+        Either give just the character, or if the character has a variant,
+        give that as a second argument
 
         Raises InvalidCharacterError if the character and variant don't
-        correspond to known data
-
-        >>> k = KanjiVG('Л')
-        Traceback (most recent call last):
-            ...
-        InvalidCharacterError: ('Л', '')
-
+        correspond to known data.
         '''
         self.character = character
         self.variant = variant
@@ -114,17 +87,13 @@ class KanjiVG(object):
                       encoding='utf-8') as f:
                 self.svg = f.read()
         except FileNotFoundError as e:  # file not found
-            raise InvalidCharacterError(character, variant) from e
+            raise InvalidCharacterError(self.character, self.variant) from e
 
     @classmethod
     def _create_from_filename(cls, filename):
         '''
         Alternate constructor that uses a KanjiVG filename; used by
         get_all().
-
-        >>> k = KanjiVG._create_from_filename('00061.svg')
-        >>> k.character
-        'a'
         '''
         m = re.match('^([0-9a-f]*)-?(.*?).svg$', filename)
         return cls(chr(int(m.group(1), 16)), m.group(2))
@@ -133,10 +102,6 @@ class KanjiVG(object):
     def ascii_filename(self):
         '''
         An SVG filename in ASCII using the same format KanjiVG uses.
-
-        >>> k = KanjiVG('漢')
-        >>> k.ascii_filename
-        '06f22.svg'
 
         May raise InvalidCharacterError for some kinds of invalid
         character/variant combinations; this should only happen during
@@ -155,10 +120,6 @@ class KanjiVG(object):
     def character_filename(self):
         '''
         An SVG filename that uses the unicode character
-
-        >>> k = KanjiVG('漢')
-        >>> print(k.character_filename)
-        漢.svg
         '''
         if not self.variant:
             return '%s.svg' % self.character
@@ -170,10 +131,6 @@ class KanjiVG(object):
         '''
         Returns a complete list of KanjiVG objects; everything there is
         data for
-
-        >>> kanji_list = KanjiVG.get_all()
-        >>> kanji_list[0].__class__.__name__
-        'KanjiVG'
         '''
         kanji = []
         for file in os.listdir(source_directory):
@@ -191,16 +148,17 @@ class KanjiColorizer:
 
     Settings can set by initializing with a string in the same format as
     the command line.
-    >>> test_output_dir = os.path.join('test', 'colorized-kanji')
-    >>> my_args = ' '.join(['--characters', 'aあ漢',
-    ...                     '--output', test_output_dir])
-    >>> kc = KanjiColorizer(my_args)
+
+        test_output_dir = os.path.join('test', 'colorized-kanji')
+        my_args = ' '.join(['--characters', 'aあ漢',
+        ...                 '--output', test_output_dir])
+        kc = KanjiColorizer(my_args)
 
     To get an svg for a single character
-    >>> colored_svg = kc.get_colored_svg('a')
+        colored_svg = kc.get_colored_svg('a')
 
     To create a set of diagrams:
-    >>> kc.write_all()
+        kc.write_all()
 
     Note: This class is in the middle of having stuff that shouldn't be
     included factored out.  Some things have already been moved to the
@@ -222,20 +180,6 @@ class KanjiColorizer:
     def _init_parser(self):
         r"""
         Initializes argparse.ArgumentParser self._parser
-
-        >>> kc = KanjiColorizer()
-
-        To show that it really is creating it:
-        >>> kc._parser = None
-
-        Then when this method is run:
-        >>> kc._init_parser()
-        >>> type(kc._parser)
-        <class 'argparse.ArgumentParser'>
-
-        >>> kc._parser.get_default('mode')
-        'spectrum'
-
         """
         self._parser = argparse.ArgumentParser(description='Create a set of '
                                                'colored stroke order svgs')
@@ -307,25 +251,12 @@ class KanjiColorizer:
     def read_cl_args(self):
         """
         Sets the settings to what's indicated in command line arguments
-
-        >>> kc = KanjiColorizer()
-        >>> kc.settings.mode
-        'spectrum'
-        >>> sys.argv = ['this.py', '--mode', 'contrast']
-        >>> kc.read_cl_args()
-        >>> kc.settings.mode
-        'contrast'
         """
         self.settings = self._parser.parse_args()
 
     def read_arg_string(self, argstring):
         """
-        >>> kc = KanjiColorizer()
-        >>> kc.settings.mode
-        'spectrum'
-        >>> kc.read_arg_string('--mode contrast')
-        >>> kc.settings.mode
-        'contrast'
+        Sets the settings to what's inidicate by argstring string
         """
         self.settings = self._parser.parse_args(argstring.split())
 
@@ -333,16 +264,6 @@ class KanjiColorizer:
         """
         Returns a string containing a colored stroke order diagram svg
         for character.
-
-        >>> kc = KanjiColorizer()
-        >>> svg = kc.get_colored_svg('a')
-        >>> svg.splitlines()[0]
-        '<?xml version="1.0" encoding="UTF-8"?>'
-        >>> svg.find('00061')
-        1938
-        >>> svg.find('has been modified')
-        53
-
         """
         svg = KanjiVG(character).svg
         svg = self._modify_svg(svg)
@@ -354,31 +275,6 @@ class KanjiColorizer:
         option) and prints them to files in the destination directory.
 
         Silently ignores invalid characters.
-
-        >>> test_output_dir = os.path.join('test', 'colorized-kanji')
-        >>> kc = KanjiColorizer(' '.join(['--characters', 'aあ漢',
-        ...                               '--output', test_output_dir]))
-        >>> kc.write_all()
-
-        These should be the correct files:
-        >>> import difflib
-        >>> for file in os.listdir(test_output_dir):
-        ...     our_svg = open(
-        ...         os.path.join(test_output_dir, file),
-        ...         'r', encoding='utf-8').read()
-        ...     desired_svg = open(
-        ...         os.path.join('test', 'default_results',
-        ...             'kanji-colorize-spectrum',  file),
-        ...             'r', encoding='utf-8').read()
-        ...     for line in difflib.context_diff(our_svg.splitlines(1),
-        ...            desired_svg.splitlines(1)):
-        ...         print(line)
-        ...
-
-        Clean up doctest
-        >>> import shutil
-        >>> shutil.rmtree(test_output_dir) 
-
         """
         self._setup_dst_dir()
         if not self.settings.characters:
@@ -408,22 +304,6 @@ class KanjiColorizer:
     def _modify_svg(self, src_svg):
         """
         Applies all desired changes to the SVG
-
-        >>> kc = KanjiColorizer('')
-        >>> original_svg = open(
-        ...    os.path.join(source_directory, '06f22.svg'),
-        ...    'r', encoding='utf-8').read()
-        >>> desired_svg = open(
-        ...    os.path.join(
-        ...        'test', 'default_results', 'kanji-colorize-spectrum',
-        ...        '漢.svg'),
-        ...    'r', encoding='utf-8').read()
-        >>> import difflib
-        >>> for line in difflib.context_diff(
-        ...        kc._modify_svg(original_svg).splitlines(1),
-        ...        desired_svg.splitlines(1)):
-        ...     print(line)
-        ...
         """
         if src_svg == '':
             return ''
@@ -507,28 +387,6 @@ class KanjiColorizer:
         """
         Creates the destination directory args.output_directory if
         necessary
-
-        (Set up the doctest environment)
-        >>> current_directory = os.path.abspath(os.path.curdir)
-        >>> os.mkdir(os.path.join('test', 'doctest-tmp'))
-        >>> os.chdir(os.path.join('test', 'doctest-tmp'))
-        >>> kc = KanjiColorizer('')
-
-        This creates the directory
-        >>> kc._setup_dst_dir()
-        >>> os.listdir(os.path.curdir)
-        ['colorized-kanji']
-
-        But doesn't do anything or throw an error if it already exists
-        >>> kc._setup_dst_dir()
-        >>> os.listdir(os.path.curdir)
-        ['colorized-kanji']
-
-        (done; reseting environment for other doctests)
-        >>> os.rmdir(kc.settings.output_directory)
-        >>> os.chdir(os.path.pardir)
-        >>> os.rmdir('doctest-tmp')
-        >>> os.chdir(current_directory)
         """
         if not (os.path.exists(self.settings.output_directory)):
             os.mkdir(self.settings.output_directory)
@@ -536,14 +394,6 @@ class KanjiColorizer:
     def _get_dst_filename(self, kanji):
         """
         Return the correct filename, based on args.filename-mode
-
-        >>> kc = KanjiColorizer('--filename-mode code')
-        >>> kc._get_dst_filename(KanjiVG('a'))
-        '00061.svg'
-        >>> kc = KanjiColorizer('--filename-mode character')
-        >>> kc._get_dst_filename(KanjiVG('a'))
-        'a.svg'
-
         """
         if (self.settings.filename_mode == 'character'):
             return kanji.character_filename
@@ -572,20 +422,6 @@ class KanjiColorizer:
         This adds a style attribute to path (stroke) and text (stroke
         number) elements.  Both of these already have attributes, so we
         can expect a space.  Not all SVGs include stroke numbers.
-
-        >>> kc = KanjiColorizer('')
-        >>> svg_src = "<svg><path /><path /><text >1</text><text >2</text></svg>"
-        >>> dom = minidom.parseString(svg_src)
-        >>> svg = dom.getElementsByTagName('svg')[0]
-        >>> kc._color_svg_strokes(svg)
-        >>> svg.toxml()
-        '<svg><path style="stroke: #bf0909;"/><path style="stroke: #09bfbf;"/><text style="fill: #bf0909;">1</text><text style="fill: #09bfbf;">2</text></svg>'
-        >>> svg_src = "<svg><path /><path /></svg>"
-        >>> dom = minidom.parseString(svg_src)
-        >>> svg = dom.getElementsByTagName('svg')[0]
-        >>> kc._color_svg_strokes(svg)
-        >>> svg.toxml()
-        '<svg><path style="stroke: #bf0909;"/><path style="stroke: #09bfbf;"/></svg>'
         """
         color_iterator = self._color_generator(self._stroke_count(svg))
 
@@ -600,33 +436,6 @@ class KanjiColorizer:
     def _comment_copyright(self, dom: minidom.Document):
         """
         Add a comment about what this script has done to the copyright notice
-
-        >>> svg_src = '''<!--
-        ... Copyright (C) copyright holder (etc.)
-        ... -->
-        ... <svg></svg>
-        ... '''
-
-        This contains the notice:
-
-        >>> kc = KanjiColorizer('')
-        >>> dom = minidom.parseString(svg_src)
-        >>> kc._comment_copyright(dom)
-        >>> dom.toxml().count('This file has been modified')
-        1
-
-        And depends on the settings it is run with:
-
-        >>> kc = KanjiColorizer('--mode contrast')
-        >>> dom = minidom.parseString(svg_src)
-        >>> kc._comment_copyright(dom)
-        >>> dom.toxml().count('contrast')
-        1
-        >>> kc = KanjiColorizer('--mode spectrum')
-        >>> dom = minidom.parseString(svg_src)
-        >>> kc._comment_copyright(dom)
-        >>> dom.toxml().count('contrast')
-        0
         """
         note = f"""This file has been modified from the original version by the kanji_colorize.py
 script (available at http://github.com/Darkclainer/kanji-colorize,
@@ -651,13 +460,6 @@ The original SVG has the following copyright:
         Resize the svg according to args.image_size, by changing the 109s
         in the <svg> attributes, and adding a transform scale to the
         groups enclosing the strokes and stroke numbers
-
-        >>> kc = KanjiColorizer('--image-size 100')
-        >>> svg_src = '<svg  width="109" height="109" viewBox="0 0 109 109"><g id="a"><path /></g></svg>'
-        >>> svg = minidom.parseString(svg_src)
-        >>> kc._resize_svg(svg, svg.documentElement)
-        >>> svg.documentElement.toxml()
-        '<svg width="100" height="100" viewBox="0 0 100 100"><g id="scaleTransform" transform="scale(0.9174311926605505,0.9174311926605505)"><g id="a"><path/></g></g></svg>'
         """
         ratio = repr(float(self.settings.image_size) / 109)
         size = str(self.settings.image_size)
@@ -681,26 +483,12 @@ The original SVG has the following copyright:
         """
         Return the number of strokes in the svg, based on occurences of
         "<path "
-
-        >>> dom = minidom.parseString("<svg><path /><path /><path /></svg>")
-        >>> svg = dom.getElementsByTagName('svg')[0]
-        >>> kc = KanjiColorizer('')
-        >>> kc._stroke_count(svg)
-        3
         """
         return len(svg.getElementsByTagName('path'))
 
     def _hsv_to_rgbhexcode(self, h, s, v):
         """
         Convert an h, s, v color into rgb form #000000
-
-        >>> kc = KanjiColorizer('')
-        >>> kc._hsv_to_rgbhexcode(0, 0, 0)
-        '#000000'
-        >>> kc._hsv_to_rgbhexcode(2.0/3, 1, 1)
-        '#0000ff'
-        >>> kc._hsv_to_rgbhexcode(0.5, 0.95, 0.75)
-        '#09bfbf'
         """
         color = colorsys.hsv_to_rgb(h, s, v)
         return '#%02x%02x%02x' % tuple([int(i * 255) for i in color])
@@ -710,15 +498,6 @@ The original SVG has the following copyright:
         Create an iterator that loops through n colors twice (so that
         they can be used for both strokes and stroke numbers) using
         mode, saturation, and value from the args namespace
-
-        >>> my_args = '--mode contrast --saturation 1 --value 1'
-        >>> kc = KanjiColorizer(my_args)
-        >>> [color for color in kc._color_generator(3)]
-        ['#ff0000', '#004aff', '#94ff00']
-        >>> my_args = '--mode spectrum --saturation 0.95 --value 0.75'
-        >>> kc = KanjiColorizer(my_args)
-        >>> [color for color in kc._color_generator(2)]
-        ['#bf0909', '#09bfbf']
         """
         if (self.settings.mode == "contrast"):
             angle = 0.618033988749895  # conjugate of the golden ratio
@@ -737,19 +516,6 @@ def _get_nonempty_elements(svg: minidom.Element, attribute: str):
     """
     Return all non empty groups that have element attribute.
     Non empty means that they have at least one direct path child.
-
-    >>> node = minidom.parseString("<svg><g><path /><path /></g></svg>").documentElement
-    >>> _get_nonempty_elements(node, 'e')
-    []
-    >>> node = minidom.parseString("<svg><g e='a'><path/></g></svg>").documentElement
-    >>> list(map(lambda v: v.attributes['e'].value, _get_nonempty_elements(node, 'e')))
-    ['a']
-    >>> node = minidom.parseString("<svg><g e='a'></g></svg>").documentElement
-    >>> list(map(lambda v: v.attributes['e'].value, _get_nonempty_elements(node, 'e')))
-    []
-    >>> node = minidom.parseString("<svg><g e='a'><g e='b'><path/></g></g></svg>").documentElement
-    >>> list(map(lambda v: v.attributes['e'].value, _get_nonempty_elements(node, 'e')))
-    ['b']
     """
     return list(
         filter(
@@ -761,13 +527,6 @@ def _get_nonempty_elements(svg: minidom.Element, attribute: str):
 def _has_direct_path(node: minidom.Document):
     """
     Return True if element has direct path child
-
-    >>> node = minidom.parseString("<g><path /><path /></g>").documentElement
-    >>> _has_direct_path(node)
-    True
-    >>> node = minidom.parseString("<g><text></text></g>").documentElement
-    >>> _has_direct_path(node)
-    False
     """
     return len(_get_direct_paths(node)) != 0
 

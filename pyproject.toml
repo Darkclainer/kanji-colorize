@@ -10,7 +10,6 @@ aqt = "^2.1.52"
 
 [tool.poetry.dev-dependencies]
 Paver = "1.2.2"
-mock = "1.0.1"
 pytest = "^7.1.2"
 pylint = "^2.13.9"
 
