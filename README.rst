@@ -12,6 +12,8 @@ For now next things were changed:
 3. Modification process was rewritten to work with dom.
    I hope it will help to modify this project.
 4. Add new options 'enable-grid' to draw grid behind kanji diagram.
+5. Refactor all test. All doctests moved to pytest, also unittest 
+   tests rewritten to pytest variant
 
 ==============
 KanjiColorizer

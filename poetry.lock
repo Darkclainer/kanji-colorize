@@ -292,14 +292,6 @@ optional = false
 python-versions = ">=3.6"
 
 [[package]]
-name = "mock"
-version = "1.0.1"
-description = "A Python Mocking and Patching Library for Testing"
-category = "dev"
-optional = false
-python-versions = "*"
-
-[[package]]
 name = "orjson"
 version = "3.6.8"
 description = "Fast, correct Python JSON library supporting dataclasses, datetimes, and numpy"
@@ -564,7 +556,7 @@ python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "890814e9b50a18424b36b26611f7dcc6ef8bc7c8cd0723fc243d1d1a81780dc8"
+content-hash = "29dd2650b1c55bc9b117e8ce9c09ff2357c6ca48405f49b24679e62320126de3"
 
 [metadata.files]
 anki = [
@@ -741,10 +733,6 @@ markupsafe = [
 mccabe = [
     {file = "mccabe-0.7.0-py2.py3-none-any.whl", hash = "sha256:6c2d30ab6be0e4a46919781807b4f0d834ebdd6c6e3dca0bda5a15f863427b6e"},
     {file = "mccabe-0.7.0.tar.gz", hash = "sha256:348e0240c33b60bbdf4e523192ef919f28cb2c3d7d5c7794f74009290f236325"},
-]
-mock = [
-    {file = "mock-1.0.1.tar.gz", hash = "sha256:b839dd2d9c117c701430c149956918a423a9863b48b09c90e30a6013e7d2f44f"},
-    {file = "mock-1.0.1.zip", hash = "sha256:8f83080daa249d036cbccfb8ae5cc6ff007b88d6d937521371afabe7b19badbc"},
 ]
 orjson = [
     {file = "orjson-3.6.8-cp310-cp310-macosx_10_7_x86_64.whl", hash = "sha256:3a287a650458de2211db03681b71c3e5cb2212b62f17a39df8ad99fc54855d0f"},
